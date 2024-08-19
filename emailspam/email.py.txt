@@ -1,0 +1,48 @@
+#Import necessary libraries
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score, confusion_matrix
+
+# Load dataset with a specified encoding
+# Try using 'latin1' or 'ISO-8859-1' if 'utf-8' does not work
+data = pd.read_csv('C:\\Users\\Dell\\Documents\\shobi\\spam.csv', encoding='latin1')
+print(data.head())
+
+# Preprocess the data
+X = data['v2']
+y = data['v1']
+
+# Convert text to TF-IDF features
+vectorizer = TfidfVectorizer()
+X_tfidf = vectorizer.fit_transform(X)
+
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(X_tfidf, y, test_size=0.3, random_state=42)
+
+# Train the model
+model = MultinomialNB()
+model.fit(X_train, y_train)
+
+# Make predictions
+y_pred = model.predict(X_test)
+
+# Evaluate the model
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+
+
+# Function to predict if an email is spam
+def predict_spam(email_text):
+    # Transform the email text to TF-IDF features using the same vectorizer
+    email_features = vectorizer.transform([email_text])
+    # Predict using the trained model
+    prediction = model.predict(email_features)
+    # Return the prediction result
+    return 'Spam' if prediction[0] == 1 else 'Not Spam'
+
+# Example usage
+new_email = "Hii!"
+print(f"Prediction for the new email: {predict_spam(new_email)}")

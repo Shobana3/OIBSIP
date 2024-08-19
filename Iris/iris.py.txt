@@ -1,0 +1,101 @@
+#Import necessary libraries
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split,GridSearchCV
+from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier, export_text, plot_tree
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score,confusion_matrix,classification_report,roc_curve,auc
+
+#Load the iris dataset
+iris = load_iris()
+df = pd.DataFrame(data=iris.data, columns=iris.feature_names)
+df['species'] = iris.target
+df['species'] = df['species'].map({0: 'setosa', 1: 'versicolor', 2: 'virginica'})
+
+#Exploratory Data Analysis
+print("First 5 entries of the dataset:")
+print(df.head())
+print("\nDataset description:")
+print(df.describe())
+print("\nClass distribution:")
+print(df['species'].value_counts())
+
+#Visualize the data
+sns.pairplot(df, hue='species', markers=['o', 's', 'D'])
+plt.suptitle("Pairplot of Iris Dataset", y=1.02)
+plt.show()
+
+#Split the dataset into training and testing test
+X_train, X_test, y_train, y_test = train_test_split(iris.data, iris.target, test_size=0.2, random_state=42)
+
+#Feature Scaling
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+#Intialize and train the decision tree classifier
+dtc = DecisionTreeClassifier(criterion='entropy', max_depth=3, random_state=42)
+dtc.fit(X_train, y_train)
+
+#Visualize the decision tree
+plt.figure(figsize=(20, 10))
+plot_tree(dtc, filled=True, feature_names=iris.feature_names, class_names=iris.target_names, rounded=True)
+plt.show()
+
+#Make Predictions on the test set
+y_pred = dtc.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+conf_matrix = confusion_matrix(y_test, y_pred)
+class_report = classification_report(y_test, y_pred, target_names=iris.target_names)
+
+print(f"\nModel Accuracy: {accuracy:.2f}")
+print("\nConfusion Matrix:")
+print(conf_matrix)
+print("\nClassification Report:")
+print(class_report)
+
+#Export the decision tree rules in text format
+tree_rules = export_text(dtc, feature_names=iris.feature_names)
+print("\nDecision Tree Rules:")
+print(tree_rules)
+
+#Model selection and hyperparameter turning using GridSearchCV
+parameters={'C':[0.1, 1, 10, 100],'kernel':['linear', 'rbf', 'poly'], 'gamma':[0.001, 0.01, 0.1, 1]}
+svc=SVC(probability=True)
+clf=GridSearchCV(svc, parameters, cv=5, scoring='accuracy')
+clf.fit(X_train, y_train)
+
+print("\nBest Parameters found by GridSearchCV:")
+print(clf.best_params_)
+
+#Train the model with the best parameters
+best_model= clf.best_estimator_
+best_model.fit(X_train,y_train)
+
+#ROC Curve and AUC
+y_prob=best_model.predict_proba(X_test)
+fpr={}
+tpr={}
+roc_auc={}
+
+for i in range(len(iris.target_names)):
+    fpr[i], tpr[i], _ = roc_curve(y_test == i, y_prob[:, i]) 
+    roc_auc[i] = auc(fpr[i], tpr[i])
+
+    #Plot ROC curves
+    plt.figure(figsize=(10, 8))
+for i in range(len(iris.target_names)):
+    plt.plot(fpr[i], tpr[i], label =f'ROC curve of class {iris.target_names[i]} (area = {roc_auc[i]:.2f})')
+    
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC) curves')
+    plt.legend(loc='lower right')
+    plt.show()
